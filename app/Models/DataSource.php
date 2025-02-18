@@ -17,12 +17,14 @@ class DataSource extends Model
         'name',
         'type',
         'config',
-        'is_active'
+        'is_active',
+        'last_fetch_at'
     ];
 
     protected $casts = [
         'config' => 'array',
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'last_fetch_at' => 'datetime'
     ];
 
     /**
@@ -42,10 +44,36 @@ class DataSource extends Model
     }
 
     /**
+     * Belirli bir tipteki veri kaynaklarını filtrele
+     */
+    public function scopeOfType($query, string $type)
+    {
+        return $query->where('type', $type);
+    }
+
+    /**
      * Eski kayıtları temizle
      */
     public function prunable()
     {
             return $this->data()->where('processed_at', '<=', now()->subMonth(3));
+    }
+
+    /**
+     * Son çekme zamanını güncelle
+     */
+    public function updateLastFetch(): bool
+    {
+        return $this->update([
+            'last_fetch_at' => now()
+        ]);
+    }
+
+    /**
+     * Config değerini al
+     */
+    public function getConfigValue(string $key, $default = null)
+    {
+        return data_get($this->config, $key, $default);
     }
 }

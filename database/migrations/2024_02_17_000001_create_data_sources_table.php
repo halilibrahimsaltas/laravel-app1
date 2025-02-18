@@ -14,10 +14,14 @@ return new class extends Migration
         Schema::create('data_sources', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->enum('type', ['forex', 'crypto', 'gold']);
-            $table->json('config')->nullable();
+            $table->string('type'); // api, webhook, file
+            $table->json('config');
             $table->boolean('is_active')->default(true);
+            $table->timestamp('last_fetch_at')->nullable();
             $table->timestamps();
+
+            $table->index('type');
+            $table->index('is_active');
         });
     }
 
