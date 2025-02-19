@@ -69,8 +69,42 @@
                                 "key": "Authorization",
                                 "value": "Bearer {{token}}"
                             }
+                        ],
+                        "query": [
+                            {
+                                "key": "currency",
+                                "value": "usd"
+                            }
                         ]
-                    }
+                    },
+                    "response": [
+                        {
+                            "name": "Başarılı Yanıt",
+                            "originalRequest": {
+                                "method": "GET",
+                                "url": "{{base_url}}/api/finance/gold-price?currency=usd"
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "_postman_previewlanguage": "json",
+                            "body": {
+                                "status": "success",
+                                "data": {
+                                    "price": 28793.29,
+                                    "from_currency": "GOLD",
+                                    "to_currency": "USD",
+                                    "last_updated": "2024-03-15T15:45:00+00:00",
+                                    "source": "coingecko"
+                                }
+                            }
+                        }
+                    ]
                 },
                 {
                     "name": "Döviz Kuru",
@@ -81,9 +115,7 @@
                             {
                                 "key": "Authorization",
                                 "value": "Bearer {{token}}"
-                            }
-                        ],
-                        "query": [
+                            },
                             {
                                 "key": "from_currency",
                                 "value": "USD"
@@ -99,27 +131,36 @@
                             "name": "Başarılı Yanıt",
                             "originalRequest": {
                                 "method": "GET",
-                                "url": "{{base_url}}/api/finance/exchange-rate?from_currency=USD&to_currency=TRY"
+                                "url": "{{base_url}}/api/finance/exchange-rate",
+                                "header": [
+                                    {
+                                        "key": "from_currency",
+                                        "value": "USD"
+                                    },
+                                    {
+                                        "key": "to_currency",
+                                        "value": "TRY"
+                                    }
+                                ]
                             },
                             "status": "OK",
                             "code": 200,
-                            "header": [
-                                {
-                                    "key": "Content-Type",
-                                    "value": "application/json"
-                                }
-                            ],
-                            "_postman_previewlanguage": "json",
                             "body": {
                                 "status": "success",
                                 "data": {
-                                    "from_currency": "USD",
-                                    "to_currency": "TRY",
-                                    "rate": 36.2658,
-                                    "last_updated": "2025-02-18 20:45:35",
+                                    "from": {
+                                        "code": "USD",
+                                        "name": "United States Dollar"
+                                    },
+                                    "to": {
+                                        "code": "TRY",
+                                        "name": "Turkish Lira"
+                                    },
+                                    "rate": 36.29090000,
+                                    "last_updated": "2024-03-15 15:45:05",
                                     "timezone": "UTC",
-                                    "bid_price": 36.26416,
-                                    "ask_price": 36.26581
+                                    "bid_price": 36.28909000,
+                                    "ask_price": 36.29216000
                                 }
                             }
                         }

@@ -29,14 +29,67 @@ class FinanceController extends Controller
     /**
      * Altın fiyatını getirir
      */
-    public function getGoldPrice()
+    public function getGoldPrice(Request $request)
     {
         try {
-            $data = $this->alphaVantageService->getGoldPrice();
-            return response()->json($data);
+            $toCurrency = strtoupper($request->get('currency', 'USD'));
+            
+            // Cache key oluştur
+            $cacheKey = "gold_price_{$toCurrency}";
+            
+            // Cache'den veriyi kontrol et
+            if (Cache::has($cacheKey)) {
+                return response()->json(Cache::get($cacheKey));
+            }
+            
+            // GoldAPI.io API'sini kullanarak altın fiyatını alalım
+            $response = Http::withHeaders([
+                'x-access-token' => config('services.goldapi.key'),
+                'Content-Type' => 'application/json'
+            ])->get("https://www.goldapi.io/api/XAU/{$toCurrency}");
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                if (isset($data['price'])) {
+                    $troyOuncePrice = $data['price'];
+                    $gramPrice = $troyOuncePrice / 31.1034768;
+                    
+                    $result = [
+                        'status' => 'success',
+                        'data' => [
+                            'troy_ounce' => [
+                                'price' => (float) $troyOuncePrice,
+                                'unit' => 'troy ounce'
+                            ],
+                            'gram' => [
+                                'price' => (float) number_format($gramPrice, 2, '.', ''),
+                                'unit' => 'gram'
+                            ],
+                            'from_currency' => 'GOLD',
+                            'to_currency' => $toCurrency,
+                            'last_updated' => now()->toIso8601String(),
+                            'source' => 'goldapi'
+                        ]
+                    ];
+                    
+                    // Sonucu 5 dakika cache'le
+                    Cache::put($cacheKey, $result, now()->addMinutes(5));
+                    
+                    return response()->json($result);
+                }
+            }
+
+            throw new \Exception('API yanıtı geçerli veri içermiyor');
+
         } catch (\Exception $e) {
-            return response()->json([
+            Log::error('Altın fiyatı alma hatası', [
                 'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Altın fiyatı alınamadı'
             ], 500);
         }
     }
@@ -47,73 +100,55 @@ class FinanceController extends Controller
     public function getExchangeRate(Request $request)
     {
         try {
-            $fromCurrency = strtoupper($request->get('from_currency', 'USD'));
-            $toCurrency = strtoupper($request->get('to_currency', 'TRY'));
-            
-            // Cache key oluştur
-            $cacheKey = "exchange_rate:{$fromCurrency}:{$toCurrency}";
-            
-            return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($fromCurrency, $toCurrency) {
-                Log::info('AlphaVantage API isteği yapılıyor', [
-                    'from' => $fromCurrency,
-                    'to' => $toCurrency,
-                    'url' => $this->baseUrl
-                ]);
+            $fromCurrency = $request->get('from_currency', 'USD');
+            $toCurrency = $request->get('to_currency', 'TRY');
 
-                $response = Http::get($this->baseUrl, [
-                    'function' => 'CURRENCY_EXCHANGE_RATE',
-                    'from_currency' => $fromCurrency,
-                    'to_currency' => $toCurrency,
-                    'apikey' => $this->apiKey
-                ]);
+            $response = Http::get('https://www.alphavantage.co/query', [
+                'function' => 'CURRENCY_EXCHANGE_RATE',
+                'from_currency' => strtoupper($fromCurrency),
+                'to_currency' => strtoupper($toCurrency),
+                'apikey' => config('services.alphavantage.key')
+            ]);
 
-                Log::info('API yanıtı alındı', [
-                    'status' => $response->status(),
-                    'body' => $response->json()
-                ]);
-
-                if ($response->failed()) {
-                    throw new \Exception("API isteği başarısız: HTTP {$response->status()}");
-                }
-
+            if ($response->successful()) {
                 $data = $response->json();
-
-                if (isset($data['Error Message'])) {
-                    throw new \Exception($data['Error Message']);
-                }
-
-                if (!isset($data['Realtime Currency Exchange Rate'])) {
-                    throw new \Exception('Geçersiz API yanıtı: Döviz kuru verisi bulunamadı');
-                }
-
-                $exchangeData = $data['Realtime Currency Exchange Rate'];
                 
-                return [
-                    'status' => 'success',
-                    'data' => [
-                        'from_currency' => $exchangeData['1. From_Currency Code'],
-                        'to_currency' => $exchangeData['3. To_Currency Code'],
-                        'rate' => (float) $exchangeData['5. Exchange Rate'],
-                        'last_updated' => $exchangeData['6. Last Refreshed'],
-                        'timezone' => $exchangeData['7. Time Zone'],
-                        'bid_price' => (float) ($exchangeData['8. Bid Price'] ?? 0),
-                        'ask_price' => (float) ($exchangeData['9. Ask Price'] ?? 0)
-                    ]
-                ];
-            });
+                if (isset($data['Realtime Currency Exchange Rate'])) {
+                    $exchangeData = $data['Realtime Currency Exchange Rate'];
+                    
+                    return response()->json([
+                        'status' => 'success',
+                        'data' => [
+                            'from' => [
+                                'code' => $exchangeData['1. From_Currency Code'],
+                                'name' => $exchangeData['2. From_Currency Name']
+                            ],
+                            'to' => [
+                                'code' => $exchangeData['3. To_Currency Code'],
+                                'name' => $exchangeData['4. To_Currency Name']
+                            ],
+                            'rate' => (float) $exchangeData['5. Exchange Rate'],
+                            'last_updated' => $exchangeData['6. Last Refreshed'],
+                            'timezone' => $exchangeData['7. Time Zone'],
+                            'bid_price' => (float) $exchangeData['8. Bid Price'],
+                            'ask_price' => (float) $exchangeData['9. Ask Price']
+                        ]
+                    ]);
+                }
+            }
+
+            throw new \Exception('API yanıtı geçerli veri içermiyor');
 
         } catch (\Exception $e) {
-            Log::error('Döviz kuru hatası', [
+            Log::error('Döviz kuru alma hatası', [
                 'error' => $e->getMessage(),
-                'from' => $fromCurrency ?? null,
-                'to' => $toCurrency ?? null,
-                'trace' => $e->getTraceAsString()
+                'from' => $fromCurrency,
+                'to' => $toCurrency
             ]);
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Döviz kuru verisi alınamadı',
-                'error' => $e->getMessage()
+                'message' => 'Döviz kuru alınamadı'
             ], 500);
         }
     }

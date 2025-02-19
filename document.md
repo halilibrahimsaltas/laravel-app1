@@ -335,3 +335,113 @@ $volatile = AnalysisResult::highVolatility(0.03)->get();
 -   Anomali oranları
 -   İşlem süreleri
 -   Başarı/hata oranları
+
+📊 Finansal Veri API Entegrasyonları
+
+1. Döviz Kuru API (AlphaVantage)
+
+🔄 Özellikler
+
+-   Gerçek zamanlı döviz kurları
+-   Desteklenen para birimleri: USD, EUR, TRY, GBP vb.
+-   Bid/Ask fiyatları
+-   Zaman damgası ve saat dilimi bilgisi
+
+Örnek Yanıt:
+
+```json
+{
+    "status": "success",
+    "data": {
+        "from": {
+            "code": "USD",
+            "name": "United States Dollar"
+        },
+        "to": {
+            "code": "TRY",
+            "name": "Turkish Lira"
+        },
+        "rate": 31.2345,
+        "last_updated": "2024-02-19T20:10:24+00:00",
+        "timezone": "UTC",
+        "bid_price": 31.23,
+        "ask_price": 31.239
+    }
+}
+```
+
+2. Altın Fiyatları API (GoldAPI.io)
+
+🔄 Özellikler
+
+-   Gerçek zamanlı altın fiyatları
+-   Troy ons ve gram cinsinden fiyatlar
+-   Desteklenen para birimleri: USD, EUR, TRY vb.
+-   5 dakikalık önbellekleme
+-   Yüksek doğruluk oranı
+
+Örnek Yanıt:
+
+```json
+{
+    "status": "success",
+    "data": {
+        "troy_ounce": {
+            "price": 2931.88,
+            "unit": "troy ounce"
+        },
+        "gram": {
+            "price": 94.26,
+            "unit": "gram"
+        },
+        "from_currency": "GOLD",
+        "to_currency": "USD",
+        "last_updated": "2024-02-19T20:10:24+00:00",
+        "source": "goldapi"
+    }
+}
+```
+
+3. Veri Analiz Özellikleri
+
+🔄 Döviz Kuru Analizleri
+
+-   Anlık kur takibi
+-   Alış/Satış fiyat farkı analizi
+-   Para birimi çiftleri arası çapraz kur hesaplama
+-   Tarihsel kur değişimi analizi
+
+🔄 Altın Fiyat Analizleri
+
+-   Troy ons/gram dönüşümleri
+-   Farklı para birimlerinde altın değeri
+-   Altın/Döviz korelasyon analizi
+-   Fiyat trend analizi
+
+4. Önbellekleme Stratejisi
+
+🔄 Döviz Kurları
+
+-   AlphaVantage API limitlerine uygun çağrı yönetimi
+-   Yüksek trafikli kurlar için özel önbellekleme
+-   API yanıt süreleri optimizasyonu
+
+🔄 Altın Fiyatları
+
+-   5 dakikalık önbellekleme süresi
+-   Otomatik önbellek yenileme
+-   Yedek veri kaynağı desteği
+
+5. Hata Yönetimi
+
+🔄 API Hataları
+
+-   Bağlantı kopması durumunda yeniden deneme
+-   API limit aşımı kontrolü
+-   Veri tutarsızlığı kontrolü
+
+🔄 Veri Doğrulama
+
+-   Fiyat aralığı kontrolleri
+-   Para birimi geçerlilik kontrolleri
+-   Tarih/saat formatı doğrulaması
