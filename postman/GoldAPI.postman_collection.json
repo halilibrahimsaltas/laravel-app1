@@ -1,0 +1,57 @@
+{
+    "info": {
+        "name": "GoldAPI.io",
+        "description": "GoldAPI.io altın fiyatları API koleksiyonu",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Gerçek Zamanlı Altın Fiyatı",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "x-access-token",
+                        "value": "{{goldapi_key}}",
+                        "type": "text"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/XAU/{{currency}}",
+                    "host": ["{{base_url}}"],
+                    "path": ["XAU", "{{currency}}"]
+                },
+                "description": "Gerçek zamanlı altın fiyatını getirir"
+            }
+        },
+        {
+            "name": "Tarihsel Altın Fiyatı",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "x-access-token",
+                        "value": "{{goldapi_key}}",
+                        "type": "text"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/XAU/{{currency}}/{{date}}",
+                    "host": ["{{base_url}}"],
+                    "path": ["XAU", "{{currency}}", "{{date}}"]
+                },
+                "description": "Belirli bir tarihteki altın fiyatını getirir (YYYYMMDD formatında)"
+            }
+        }
+    ]
+} 

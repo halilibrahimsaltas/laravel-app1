@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\AlphaVantageService;
+use App\Services\GoldApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
@@ -11,12 +12,14 @@ use Illuminate\Support\Facades\Log;
 class FinanceController extends Controller
 {
     private $alphaVantageService;
+    private $goldApiService;
     private string $apiKey;
     private string $baseUrl;
 
-    public function __construct(AlphaVantageService $alphaVantageService)
+    public function __construct(AlphaVantageService $alphaVantageService, GoldApiService $goldApiService)
     {
         $this->alphaVantageService = $alphaVantageService;
+        $this->goldApiService = $goldApiService;
         $this->apiKey = config('services.alphavantage.key');
         $this->baseUrl = config('services.alphavantage.base_url');
 
@@ -32,55 +35,20 @@ class FinanceController extends Controller
     public function getGoldPrice(Request $request)
     {
         try {
-            $toCurrency = strtoupper($request->get('currency', 'USD'));
+            $currency = strtoupper($request->get('currency', 'USD'));
+            $date = $request->get('date'); // YYYYMMDD formatında, opsiyonel
             
-            // Cache key oluştur
-            $cacheKey = "gold_price_{$toCurrency}";
-            
-            // Cache'den veriyi kontrol et
-            if (Cache::has($cacheKey)) {
-                return response()->json(Cache::get($cacheKey));
+            // Eğer tarih belirtilmişse tarihsel veri getir
+            if ($date) {
+                return response()->json(
+                    $this->goldApiService->getHistoricalPrice('XAU', $currency, $date)
+                );
             }
             
-            // GoldAPI.io API'sini kullanarak altın fiyatını alalım
-            $response = Http::withHeaders([
-                'x-access-token' => config('services.goldapi.key'),
-                'Content-Type' => 'application/json'
-            ])->get("https://www.goldapi.io/api/XAU/{$toCurrency}");
-
-            if ($response->successful()) {
-                $data = $response->json();
-                
-                if (isset($data['price'])) {
-                    $troyOuncePrice = $data['price'];
-                    $gramPrice = $troyOuncePrice / 31.1034768;
-                    
-                    $result = [
-                        'status' => 'success',
-                        'data' => [
-                            'troy_ounce' => [
-                                'price' => (float) $troyOuncePrice,
-                                'unit' => 'troy ounce'
-                            ],
-                            'gram' => [
-                                'price' => (float) number_format($gramPrice, 2, '.', ''),
-                                'unit' => 'gram'
-                            ],
-                            'from_currency' => 'GOLD',
-                            'to_currency' => $toCurrency,
-                            'last_updated' => now()->toIso8601String(),
-                            'source' => 'goldapi'
-                        ]
-                    ];
-                    
-                    // Sonucu 5 dakika cache'le
-                    Cache::put($cacheKey, $result, now()->addMinutes(5));
-                    
-                    return response()->json($result);
-                }
-            }
-
-            throw new \Exception('API yanıtı geçerli veri içermiyor');
+            // Gerçek zamanlı veri getir
+            return response()->json(
+                $this->goldApiService->getRealTimePrice('XAU', $currency)
+            );
 
         } catch (\Exception $e) {
             Log::error('Altın fiyatı alma hatası', [

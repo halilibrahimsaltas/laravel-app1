@@ -60,7 +60,7 @@
             "name": "Finans",
             "item": [
                 {
-                    "name": "Altın Fiyatı",
+                    "name": "Altın Fiyatı (Internal)",
                     "request": {
                         "method": "GET",
                         "url": "{{base_url}}/api/finance/gold-price",
@@ -76,35 +76,55 @@
                                 "value": "usd"
                             }
                         ]
-                    },
-                    "response": [
-                        {
-                            "name": "Başarılı Yanıt",
-                            "originalRequest": {
-                                "method": "GET",
-                                "url": "{{base_url}}/api/finance/gold-price?currency=usd"
+                    }
+                },
+                {
+                    "name": "GoldAPI - Gerçek Zamanlı Altın Fiyatı",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-access-token",
+                                "value": "{{goldapi_key}}",
+                                "type": "text"
                             },
-                            "status": "OK",
-                            "code": 200,
-                            "header": [
-                                {
-                                    "key": "Content-Type",
-                                    "value": "application/json"
-                                }
-                            ],
-                            "_postman_previewlanguage": "json",
-                            "body": {
-                                "status": "success",
-                                "data": {
-                                    "price": 28793.29,
-                                    "from_currency": "GOLD",
-                                    "to_currency": "USD",
-                                    "last_updated": "2024-03-15T15:45:00+00:00",
-                                    "source": "coingecko"
-                                }
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
                             }
-                        }
-                    ]
+                        ],
+                        "url": {
+                            "raw": "{{goldapi_url}}/XAU/{{currency}}",
+                            "host": ["{{goldapi_url}}"],
+                            "path": ["XAU", "{{currency}}"]
+                        },
+                        "description": "GoldAPI.io üzerinden gerçek zamanlı altın fiyatını getirir"
+                    }
+                },
+                {
+                    "name": "GoldAPI - Tarihsel Altın Fiyatı",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-access-token",
+                                "value": "{{goldapi_key}}",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{goldapi_url}}/XAU/{{currency}}/{{date}}",
+                            "host": ["{{goldapi_url}}"],
+                            "path": ["XAU", "{{currency}}", "{{date}}"]
+                        },
+                        "description": "GoldAPI.io üzerinden belirli bir tarihteki altın fiyatını getirir"
+                    }
                 },
                 {
                     "name": "Döviz Kuru",
@@ -343,6 +363,22 @@
         {
             "key": "token",
             "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNzEzNjMwMjYzfQ.Z0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+            "key": "goldapi_url",
+            "value": "https://www.goldapi.io/api"
+        },
+        {
+            "key": "goldapi_key",
+            "value": "{{GOLDAPI_KEY}}"
+        },
+        {
+            "key": "currency",
+            "value": "USD"
+        },
+        {
+            "key": "date",
+            "value": "{{CURRENT_DATE}}"
         }
     ]
 }
