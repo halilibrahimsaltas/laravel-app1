@@ -109,6 +109,10 @@ http://localhost:5173
 -   Veri güncelleme sıklığı 5 dakikadır
 -   Redis önbellek süresi 5 dakikadır
 
-## 📄 Lisans
+## 📄 Basit Bir Arayüz (Güncellenecek)
 
-Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakın.
+![Image](https://github.com/user-attachments/assets/fa4dea0a-640d-4f3b-bcf2-719968d7c101)
+
+![Image](https://github.com/user-attachments/assets/c9deeb93-0f74-4b24-8fd3-de2c4e252ba5)
+
+
