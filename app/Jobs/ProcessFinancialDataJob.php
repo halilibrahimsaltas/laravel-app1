@@ -271,6 +271,36 @@ class ProcessFinancialDataJob implements ShouldQueue
             throw new \Exception($response['message']);
         }
 
-        return $response['data'];
+        $goldData = $response['data'];
+        
+        return [
+            'from' => [
+                'code' => 'XAU',
+                'name' => 'Gold'
+            ],
+            'to' => [
+                'code' => $currency,
+                'name' => $this->getCurrencyName($currency)
+            ],
+            'rate' => $goldData['troy_ounce']['price'],
+            'last_updated' => $goldData['last_updated'],
+            'timezone' => 'UTC',
+            'bid_price' => $goldData['troy_ounce']['price'],
+            'ask_price' => $goldData['troy_ounce']['price']
+        ];
+    }
+
+    /**
+     * Para birimi koduna göre para birimi adını döndürür
+     */
+    private function getCurrencyName(string $code): string
+    {
+        return match($code) {
+            'USD' => 'United States Dollar',
+            'TRY' => 'Turkish Lira',
+            'EUR' => 'Euro',
+            'GBP' => 'British Pound',
+            default => $code
+        };
     }
 } 
