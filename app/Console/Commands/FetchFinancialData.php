@@ -56,7 +56,12 @@ class FetchFinancialData extends Command
                 );
             } else {
                 $this->info("Job kuyruğa ekleniyor...");
-                ProcessFinancialDataJob::dispatch($type, $params);
+                dispatch(new ProcessFinancialDataJob($type, $params))
+                    ->onQueue('default')
+                    ->delay(now()->addSeconds(1));
+                
+                $this->info("Job başarıyla kuyruğa eklendi. Queue worker'ın çalıştığından emin olun:");
+                $this->line("php artisan queue:work --queue=default");
             }
 
             // Son kaydı kontrol et

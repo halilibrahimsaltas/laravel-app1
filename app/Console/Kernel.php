@@ -61,27 +61,27 @@ class Kernel extends ConsoleKernel
             }
         })->hourly();
 
-        // Her 5 dakikada bir USD/TRY döviz kuru
+        // Her dakika USD/TRY döviz kuru
         $schedule->job(new ProcessFinancialDataJob('forex', [
             'from_currency' => 'USD',
             'to_currency' => 'TRY'
-        ]))->everyFiveMinutes();
+        ]))->everyMinute();
 
-        // Her 5 dakikada bir EUR/TRY döviz kuru
+        // Her dakika EUR/TRY döviz kuru
         $schedule->job(new ProcessFinancialDataJob('forex', [
             'from_currency' => 'EUR',
             'to_currency' => 'TRY'
-        ]))->everyFiveMinutes();
+        ]))->everyMinute();
 
-        // Her 5 dakikada bir USD cinsinden altın fiyatı
+        // Her dakika USD cinsinden altın fiyatı
         $schedule->job(new ProcessFinancialDataJob('gold', [
             'currency' => 'USD'
-        ]))->everyFiveMinutes();
+        ]))->everyMinute();
 
-        // Her 5 dakikada bir TRY cinsinden altın fiyatı
+        // Her dakika TRY cinsinden altın fiyatı
         $schedule->job(new ProcessFinancialDataJob('gold', [
             'currency' => 'TRY'
-        ]))->everyFiveMinutes();
+        ]))->everyMinute();
 
         // Veritabanı temizliği - 30 günden eski verileri sil
         $schedule->command('financial:cleanup --days=30')->daily();

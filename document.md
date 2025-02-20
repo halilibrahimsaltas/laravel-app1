@@ -6,7 +6,7 @@ Laravel-App
 
 📌 Proje Amacı
 
-Bu proje, farklı kaynaklardan veri toplayarak analiz eden, temizleyen ve görselleştiren bir veri işleme platformudur. Kullanıcılar, çeşitli API'lerden verileri alabilir, sistem bu verileri işleyip anlamlı hale getirebilir ve sonuçları grafiksel olarak görüntüleyebilir.
+Bu proje, farklı finansal kaynaklardan (döviz, altın, kripto para) veri toplayarak analiz eden, temizleyen ve görselleştiren bir finansal veri işleme platformudur. Kullanıcılar, çeşitli API'lerden verileri alabilir, sistem bu verileri işleyip anlamlı hale getirebilir ve sonuçları grafiksel olarak görüntüleyebilir.
 
 📌 Kullanıcı Senaryosu
 
@@ -445,3 +445,215 @@ $volatile = AnalysisResult::highVolatility(0.03)->get();
 -   Fiyat aralığı kontrolleri
 -   Para birimi geçerlilik kontrolleri
 -   Tarih/saat formatı doğrulaması
+
+📌 Veri Kaynakları
+
+1. AlphaVantage API (Döviz Kurları)
+
+    - Gerçek zamanlı döviz kurları
+    - Bid/Ask fiyatları
+    - Desteklenen para birimleri: USD, EUR, TRY, GBP vb.
+
+2. GoldAPI.io (Altın Fiyatları)
+    - Gerçek zamanlı altın fiyatları (XAU)
+    - Troy ons ve gram cinsinden fiyatlar
+    - Farklı para birimlerinde değerler
+
+📌 Veritabanı Yapısı
+
+1. financial_data Tablosu
+
+```sql
+CREATE TABLE financial_data (
+    id BIGINT PRIMARY KEY,
+    data_source_id BIGINT NULLABLE,
+    type VARCHAR(255),           -- 'forex', 'gold'
+    from_code VARCHAR(10),       -- 'USD', 'XAU'
+    to_code VARCHAR(10),         -- 'TRY', 'USD'
+    rate DECIMAL(20,8),          -- Döviz kuru veya altın fiyatı
+    bid_price DECIMAL(20,8),     -- Alış fiyatı
+    ask_price DECIMAL(20,8),     -- Satış fiyatı
+    data JSONB,                  -- Ham veri
+    params JSONB,                -- İstek parametreleri
+    status VARCHAR(50),          -- 'success', 'error'
+    error_message TEXT,          -- Hata mesajı
+    timestamp TIMESTAMP,         -- Veri zamanı
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+```
+
+📌 Veri İşleme Pipeline'ı
+
+1. Veri Toplama (ProcessFinancialDataJob)
+
+    - Döviz Kurları (AlphaVantage)
+        ```json
+        {
+            "from": { "code": "USD", "name": "United States Dollar" },
+            "to": { "code": "TRY", "name": "Turkish Lira" },
+            "rate": 31.2345,
+            "last_updated": "2024-02-20T12:10:24+00:00",
+            "timezone": "UTC",
+            "bid_price": 31.23,
+            "ask_price": 31.24
+        }
+        ```
+    - Altın Fiyatları (GoldAPI)
+        ```json
+        {
+            "from": { "code": "XAU", "name": "Gold" },
+            "to": { "code": "USD", "name": "United States Dollar" },
+            "rate": 2948.8,
+            "last_updated": "2024-02-20T12:10:24+00:00",
+            "timezone": "UTC",
+            "bid_price": 2948.8,
+            "ask_price": 2948.8
+        }
+        ```
+
+2. Veri Temizleme (DataCleanerService)
+
+    - Sayısal değer doğrulama
+    - Para birimi kodu kontrolü
+    - Tarih formatı standardizasyonu
+    - Eksik alan kontrolü
+
+3. Veri Kaydetme
+    - Standart format kullanımı
+    - İlişkisel veri yapısı
+    - JSON veri desteği
+
+📌 Zamanlanmış Görevler
+
+1. Döviz Kurları
+
+    - USD/TRY: Her 5 dakikada
+    - EUR/TRY: Her 5 dakikada
+    - Diğer kurlar: Saatlik
+
+2. Altın Fiyatları
+    - XAU/USD: Her 5 dakikada
+    - XAU/TRY: Her 5 dakikada
+
+📌 Hata Yönetimi
+
+1. API Hataları
+
+    - Bağlantı kopması: Otomatik yeniden deneme
+    - API limit aşımı: Bekleme süresi
+    - Veri doğrulama: Hata kaydı
+
+2. Veri İşleme Hataları
+    - Eksik veri kontrolü
+    - Format dönüşüm hataları
+    - Veritabanı kayıt hataları
+
+📌 Önbellekleme Stratejisi
+
+1. API Yanıtları
+
+    - Döviz kurları: 5 dakika
+    - Altın fiyatları: 5 dakika
+
+2. İşlenmiş Veriler
+    - Günlük ortalamalar: 1 saat
+    - Trend analizleri: 30 dakika
+
+📌 Kullanım Örnekleri
+
+1. Döviz Kuru Çekme
+
+```bash
+php artisan financial:fetch forex --debug
+```
+
+2. Altın Fiyatı Çekme
+
+```bash
+php artisan financial:fetch gold --debug
+```
+
+📌 Veri Analizi
+
+1. Temel Analizler
+
+    - Günlük ortalama hesaplama
+    - Volatilite analizi
+    - Trend tespiti
+
+2. İleri Analizler
+    - Anomali tespiti
+    - Korelasyon analizi
+    - Tahmin modelleri
+
+📌 Güvenlik Önlemleri
+
+1. API Güvenliği
+
+    - API anahtarları güvenli depolama
+    - Rate limiting
+    - IP kısıtlamaları
+
+2. Veri Güvenliği
+    - Hassas veri şifreleme
+    - Yetkilendirme kontrolleri
+    - Audit logging
+
+📌 Monitoring ve Logging
+
+1. Performans Metrikleri
+
+    - API yanıt süreleri
+    - İşlem süreleri
+    - Başarı/hata oranları
+
+2. Log Seviyeleri
+    - INFO: Rutin işlemler
+    - WARNING: Olası sorunlar
+    - ERROR: Kritik hatalar
+
+📌 Geliştirme Ortamı
+
+1. Gereksinimler
+
+    - PHP 8.1+
+    - Laravel 10.x
+    - PostgreSQL 13+
+    - Redis 6+
+
+2. Kurulum
+
+```bash
+composer install
+php artisan migrate
+php artisan queue:work
+```
+
+📌 Deployment
+
+1. Sunucu Gereksinimleri
+
+    - 2 CPU
+    - 4GB RAM
+    - 50GB SSD
+
+2. Servisler
+    - Nginx/Apache
+    - PHP-FPM
+    - PostgreSQL
+    - Redis
+    - Supervisor
+
+📌 Bakım ve İzleme
+
+1. Düzenli Bakım
+
+    - Günlük veri temizliği
+    - Log rotasyonu
+    - Performans optimizasyonu
+
+2. İzleme
+    - Sistem sağlığı
+    - API durumu
+    - Veri tutarlılığı
