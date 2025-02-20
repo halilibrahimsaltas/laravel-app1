@@ -6,6 +6,9 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\CryptoController;
 use App\Http\Controllers\Api\AnalysisController;
+use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\CurrencyController;
+use App\Http\Controllers\Api\GoldController;
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/user', function (Request $request) {
@@ -56,4 +59,10 @@ Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
+});
+
+Route::middleware('api')->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::get('/currency/{pair}', [CurrencyController::class, 'show']);
+    Route::get('/gold/{currency}', [GoldController::class, 'show']);
 });

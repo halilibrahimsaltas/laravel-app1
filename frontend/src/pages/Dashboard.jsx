@@ -1,5 +1,8 @@
-import { Grid, Paper, Typography } from '@mui/material';
+import React from 'react';
+import { Container, Grid, Paper, Typography } from '@mui/material';
 import { Line } from 'react-chartjs-2';
+import ApiTest from '../components/ApiTest';
+import FinanceOverview from '../components/FinanceOverview';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -52,21 +55,33 @@ const options = {
   },
 };
 
-function Dashboard() {
+const Dashboard = () => {
   return (
-    <Grid container spacing={3}>
-      <Grid item xs={12}>
-        <Typography variant="h4" gutterBottom>
-          Finansal Veri Analiz Paneli
-        </Typography>
+    <Container maxWidth="lg">
+      <Grid container spacing={3}>
+        <Grid item xs={12}>
+          <Typography variant="h4" gutterBottom>
+            Finansal Veri Analiz Paneli
+          </Typography>
+        </Grid>
+        <Grid item xs={12}>
+          <Paper elevation={3}>
+            <FinanceOverview />
+          </Paper>
+        </Grid>
+        <Grid item xs={12}>
+          <Paper sx={{ p: 2 }}>
+            <ApiTest />
+          </Paper>
+        </Grid>
+        <Grid item xs={12}>
+          <Paper sx={{ p: 2 }}>
+            <Line options={options} data={dummyData} />
+          </Paper>
+        </Grid>
       </Grid>
-      <Grid item xs={12}>
-        <Paper sx={{ p: 2 }}>
-          <Line options={options} data={dummyData} />
-        </Paper>
-      </Grid>
-    </Grid>
+    </Container>
   );
-}
+};
 
 export default Dashboard; 

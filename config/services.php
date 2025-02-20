@@ -43,12 +43,11 @@ return [
     ],
 
     'alphavantage' => [
-        'key' => env('ALPHA_VANTAGE_API_KEY'),
-        'base_url' => 'https://www.alphavantage.co/query',
+        'key' => env('ALPHAVANTAGE_API_KEY'),
     ],
 
     'goldapi' => [
-        'key' => env('GOLDAPI_KEY'),
+        'key' => env('GOLDAPI_API_KEY'),
     ],
 
 ];
