@@ -6,7 +6,6 @@ use App\Services\AlphaVantageService;
 use App\Services\GoldApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class FinanceController extends Controller

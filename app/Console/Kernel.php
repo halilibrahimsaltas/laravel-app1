@@ -2,7 +2,7 @@
 
 namespace App\Console;
 
-use App\Jobs\FetchFinancialDataJob;
+use App\Jobs\ProcessFinancialDataJob;
 use App\Models\DataSource;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -28,7 +28,10 @@ class Kernel extends ConsoleKernel
                 ->get();
 
             foreach ($sources as $source) {
-                dispatch(new FetchFinancialDataJob($source));
+                dispatch(new ProcessFinancialDataJob('forex', [
+                    'from_currency' => $source->from_currency,
+                    'to_currency' => $source->to_currency
+                ]));
             }
         })->hourly();
 
@@ -39,7 +42,9 @@ class Kernel extends ConsoleKernel
                 ->get();
 
             foreach ($sources as $source) {
-                dispatch(new FetchFinancialDataJob($source));
+                dispatch(new ProcessFinancialDataJob('crypto', [
+                    'symbol' => $source->symbol
+                ]));
             }
         })->everyFiveMinutes();
 
@@ -50,12 +55,36 @@ class Kernel extends ConsoleKernel
                 ->get();
 
             foreach ($sources as $source) {
-                dispatch(new FetchFinancialDataJob($source));
+                dispatch(new ProcessFinancialDataJob('gold', [
+                    'currency' => $source->currency
+                ]));
             }
         })->hourly();
 
-        // Veritabanı temizliği (eski verileri sil)
-        $schedule->command('model:prune')->daily();
+        // Her 5 dakikada bir USD/TRY döviz kuru
+        $schedule->job(new ProcessFinancialDataJob('forex', [
+            'from_currency' => 'USD',
+            'to_currency' => 'TRY'
+        ]))->everyFiveMinutes();
+
+        // Her 5 dakikada bir EUR/TRY döviz kuru
+        $schedule->job(new ProcessFinancialDataJob('forex', [
+            'from_currency' => 'EUR',
+            'to_currency' => 'TRY'
+        ]))->everyFiveMinutes();
+
+        // Her 5 dakikada bir USD cinsinden altın fiyatı
+        $schedule->job(new ProcessFinancialDataJob('gold', [
+            'currency' => 'USD'
+        ]))->everyFiveMinutes();
+
+        // Her 5 dakikada bir TRY cinsinden altın fiyatı
+        $schedule->job(new ProcessFinancialDataJob('gold', [
+            'currency' => 'TRY'
+        ]))->everyFiveMinutes();
+
+        // Veritabanı temizliği - 30 günden eski verileri sil
+        $schedule->command('financial:cleanup --days=30')->daily();
     }
 
     /**

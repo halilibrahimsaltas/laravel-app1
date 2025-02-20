@@ -2,7 +2,6 @@
 
 namespace App\Events;
 
-use App\Models\DataSource;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -12,12 +11,12 @@ class FinancialDataProcessingFailed
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public DataSource $source;
+    public string $type;
     public Throwable $error;
 
-    public function __construct(DataSource $source, Throwable $error)
+    public function __construct(string $type, Throwable $error)
     {
-        $this->source = $source;
+        $this->type = $type;
         $this->error = $error;
     }
-} 
+}

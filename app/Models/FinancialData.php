@@ -11,17 +11,26 @@ class FinancialData extends Model
     use HasFactory;
 
     protected $fillable = [
-        'source_id',
+        'data_source_id',
+        'type',
+        'from_code',
+        'to_code',
         'rate',
-        'base_currency',
-        'target_currency',
-        'timestamp',
-        'meta'
+        'bid_price',
+        'ask_price',
+        'data',
+        'params',
+        'status',
+        'error_message',
+        'timestamp'
     ];
 
     protected $casts = [
-        'rate' => 'decimal:4',
-        'meta' => 'array',
+        'rate' => 'decimal:8',
+        'bid_price' => 'decimal:8',
+        'ask_price' => 'decimal:8',
+        'data' => 'json',
+        'params' => 'json',
         'timestamp' => 'datetime'
     ];
 
@@ -30,16 +39,16 @@ class FinancialData extends Model
      */
     public function dataSource(): BelongsTo
     {
-        return $this->belongsTo(DataSource::class, 'source_id');
+        return $this->belongsTo(DataSource::class, 'data_source_id');
     }
 
     /**
      * Belirli bir para birimi çifti için en son kuru getir
      */
-    public function scopeLatestRate($query, string $base, string $target)
+    public function scopeLatestRate($query, string $from, string $to)
     {
-        return $query->where('base_currency', $base)
-                    ->where('target_currency', $target)
+        return $query->where('from_code', $from)
+                    ->where('to_code', $to)
                     ->latest('timestamp')
                     ->first();
     }
@@ -49,8 +58,8 @@ class FinancialData extends Model
      */
     public static function latestForPair(string $currencyPair)
     {
-        return static::where('base_currency', substr($currencyPair, 0, 3))
-                    ->where('target_currency', substr($currencyPair, 4, 3))
+        return static::where('from_code', substr($currencyPair, 0, 3))
+                    ->where('to_code', substr($currencyPair, 4, 3))
                     ->latest('timestamp')
                     ->first();
     }
@@ -68,6 +77,30 @@ class FinancialData extends Model
      */
     public function scopeFromSource($query, $sourceId)
     {
-        return $query->where('source_id', $sourceId);
+        return $query->where('data_source_id', $sourceId);
+    }
+
+    // Veri tipine göre filtreleme
+    public function scopeOfType($query, string $type)
+    {
+        return $query->where('type', $type);
+    }
+
+    // Başarılı verileri filtreleme
+    public function scopeSuccessful($query)
+    {
+        return $query->where('status', 'success');
+    }
+
+    // Son X kaydı getirme
+    public function scopeLatest($query, int $limit = 1)
+    {
+        return $query->orderBy('created_at', 'desc')->limit($limit);
+    }
+
+    // Belirli bir tarih aralığındaki verileri getirme
+    public function scopeBetweenDates($query, string $startDate, string $endDate)
+    {
+        return $query->whereBetween('created_at', [$startDate, $endDate]);
     }
 } 

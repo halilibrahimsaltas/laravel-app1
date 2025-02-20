@@ -37,11 +37,8 @@ class AlphaVantageService
             try {
                 $response = $this->client->get($this->baseUrl, [
                     'query' => array_merge([
-                        'apikey' => $this->apiKey,
-                        'function' => 'CURRENCY_EXCHANGE_RATE',
-                        'from_currency' => $config['from_currency'] ?? 'USD',
-                        'to_currency' => $config['to_currency'] ?? 'TRY'
-                    ])
+                        'apikey' => $this->apiKey
+                    ], $config)
                 ]);
 
                 $data = json_decode($response->getBody(), true);
@@ -54,13 +51,20 @@ class AlphaVantageService
                     Log::warning('AlphaVantage API Limit Uyarısı: ' . $data['Note']);
                 }
 
-                return $data;
+                return [
+                    'status' => 'success',
+                    'data' => $data
+                ];
 
             } catch (\Exception $e) {
                 Log::error('AlphaVantage API Hatası: ' . $e->getMessage(), [
                     'config' => $config
                 ]);
-                throw $e;
+                
+                return [
+                    'status' => 'error',
+                    'message' => $e->getMessage()
+                ];
             }
         });
     }
@@ -72,12 +76,19 @@ class AlphaVantageService
      * @param string $toCurrency Hedef para birimi
      * @return array
      */
-    public function getExchangeRate(string $fromCurrency, string $toCurrency)
+    public function getExchangeRate(string $fromCurrency, string $toCurrency): array
     {
-        return $this->fetchData([
+        $response = $this->fetchData([
+            'function' => 'CURRENCY_EXCHANGE_RATE',
             'from_currency' => $fromCurrency,
             'to_currency' => $toCurrency
         ]);
+
+        if ($response['status'] === 'error') {
+            return $response;
+        }
+
+        return $response;
     }
 
     /**
@@ -85,9 +96,10 @@ class AlphaVantageService
      *
      * @return array
      */
-    public function getGoldPrice()
+    public function getGoldPrice(): array
     {
         return $this->fetchData([
+            'function' => 'CURRENCY_EXCHANGE_RATE',
             'from_currency' => 'XAU',
             'to_currency' => 'TRY'
         ]);

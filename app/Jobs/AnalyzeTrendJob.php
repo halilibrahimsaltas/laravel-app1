@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\FinancialData;
-use App\Models\AnalysisResult;
 use App\Services\AnalysisService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

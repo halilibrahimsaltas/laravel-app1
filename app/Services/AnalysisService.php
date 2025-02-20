@@ -7,6 +7,7 @@ use App\Models\AnalysisResult;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
+
 class AnalysisService
 {
     /**

@@ -7,7 +7,6 @@ use App\Events\FinancialDataProcessingFailed;
 use App\Models\DataSource;
 use App\Models\FinancialData;
 use App\Services\DataCleanerService;
-use Illuminate\Support\Carbon;
 use GuzzleHttp\Exception\ConnectException;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,6 +16,10 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use Throwable;
+use App\Services\AlphaVantageService;
+use App\Services\GoldApiService;
+use App\Jobs\AnalyzeTrendJob;
+
 
 class ProcessFinancialDataJob implements ShouldQueue
 {
@@ -47,42 +50,67 @@ class ProcessFinancialDataJob implements ShouldQueue
      */
     private array $rawData;
 
+    private string $type;
+    private array $params;
+
     /**
      * Job oluşturulurken çalışır
      */
-    public function __construct(DataSource $source, array $rawData)
+    public function __construct(string $type, array $params = [])
     {
-        $this->source = $source;
-        $this->rawData = $rawData;
-        $this->onQueue('financial-data');
+        $this->type = $type;
+        $this->params = $params;
     }
 
     /**
      * Job'ın ana işlem metodu
      */
-    public function handle(DataCleanerService $cleaner)
+    public function handle(DataCleanerService $cleaner, AlphaVantageService $alphaVantageService, GoldApiService $goldApiService): void
     {
         try {
             Log::info("Finansal veri işleme başladı", [
-                'source' => $this->source->name,
-                'timestamp' => Carbon::now()
+                'type' => $this->type,
+                'params' => $this->params
             ]);
 
-            // Veriyi temizle ve doğrula
-            $cleanData = $cleaner->cleanCurrencyData($this->rawData);
+            $data = match ($this->type) {
+                'forex' => $this->processForexData($alphaVantageService),
+                'gold' => $this->processGoldData($goldApiService),
+                default => throw new \Exception('Geçersiz veri tipi'),
+            };
+
+            Log::info("Ham veri alındı", [
+                'type' => $this->type,
+                'data' => $data
+            ]);
+
+            // Veriyi temizle
+            $cleanData = $cleaner->cleanFinancialData($data);
+
+            Log::info("Veri temizlendi", [
+                'type' => $this->type,
+                'clean_data' => $cleanData
+            ]);
 
             // Veriyi kaydet
             $financialData = FinancialData::create([
-                'source_id' => $this->source->id,
-                ...$cleanData
+                'type' => $this->type,
+                'data' => $cleanData,
+                'params' => $this->params,
+                'status' => 'success',
+                'data_source_id' => null,
+                'timestamp' => now(),
+                'from_code' => $cleanData['from']['code'] ?? null,
+                'to_code' => $cleanData['to']['code'] ?? null,
+                'rate' => $cleanData['rate'] ?? null,
+                'bid_price' => $cleanData['bid_price'] ?? null,
+                'ask_price' => $cleanData['ask_price'] ?? null
             ]);
 
-            // İşlem başarılı log kaydı
             Log::info("Finansal veri başarıyla işlendi", [
                 'id' => $financialData->id,
-                'source' => $this->source->name,
-                'pair' => "{$cleanData['base_currency']}/{$cleanData['target_currency']}",
-                'rate' => $cleanData['rate']
+                'type' => $this->type,
+                'params' => $this->params
             ]);
 
             // Trend analizi için yeni job
@@ -93,8 +121,38 @@ class ProcessFinancialDataJob implements ShouldQueue
             // Veri değişim bildirimi
             event(new FinancialDataProcessed($financialData));
 
-        } catch (Throwable $e) {
-            $this->handleError($e);
+        } catch (ConnectException $e) {
+            Log::error("API bağlantı hatası", [
+                'type' => $this->type,
+                'params' => $this->params,
+                'error' => $e->getMessage()
+            ]);
+
+            // Bağlantı hatalarında yeniden dene
+            $this->release(30);
+
+        } catch (\Exception $e) {
+            Log::error("Finansal veri işleme hatası", [
+                'type' => $this->type,
+                'params' => $this->params,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
+
+            // Hatalı veriyi kaydet
+            FinancialData::create([
+                'type' => $this->type,
+                'data' => null,
+                'params' => $this->params,
+                'status' => 'error',
+                'error_message' => $e->getMessage(),
+                'timestamp' => now()
+            ]);
+
+            // Kritik hataları bildir
+            event(new FinancialDataProcessingFailed($this->type, $e));
         }
     }
 
@@ -104,7 +162,8 @@ class ProcessFinancialDataJob implements ShouldQueue
     public function failed(Throwable $e)
     {
         Log::error("Finansal veri işleme başarısız oldu", [
-            'source' => $this->source->name,
+            'type' => $this->type,
+            'params' => $this->params,
             'error' => $e->getMessage(),
             'trace' => $e->getTraceAsString()
         ]);
@@ -112,7 +171,7 @@ class ProcessFinancialDataJob implements ShouldQueue
         // Kritik hataları bildir
         if ($this->attempts() >= $this->tries) {
             // Slack, email veya diğer bildirim kanallarına gönder
-            event(new FinancialDataProcessingFailed($this->source, $e));
+            event(new FinancialDataProcessingFailed($this->type, $e));
         }
     }
 
@@ -144,10 +203,74 @@ class ProcessFinancialDataJob implements ShouldQueue
     public function uniqueId(): string
     {
         return implode(':', [
-            $this->source->id,
-            $this->rawData['Realtime Currency Exchange Rate']['1. From_Currency Code'],
-            $this->rawData['Realtime Currency Exchange Rate']['3. To_Currency Code'],
-            $this->rawData['Realtime Currency Exchange Rate']['6. Last Refreshed']
+            $this->type,
+            ...array_values($this->params)
         ]);
+    }
+
+    /**
+     * Döviz verilerini işle
+     */
+    private function processForexData(AlphaVantageService $service): array
+    {
+        Log::info("Döviz verisi çekiliyor", [
+            'from' => $this->params['from_currency'] ?? 'USD',
+            'to' => $this->params['to_currency'] ?? 'TRY'
+        ]);
+
+        $fromCurrency = $this->params['from_currency'] ?? 'USD';
+        $toCurrency = $this->params['to_currency'] ?? 'TRY';
+
+        $response = $service->getExchangeRate($fromCurrency, $toCurrency);
+
+        if ($response['status'] === 'error') {
+            throw new \Exception($response['message']);
+        }
+
+        if (!isset($response['data']['Realtime Currency Exchange Rate'])) {
+            throw new \Exception('API yanıtında döviz kuru verisi bulunamadı');
+        }
+
+        $exchangeData = $response['data']['Realtime Currency Exchange Rate'];
+        
+        return [
+            'from' => [
+                'code' => $exchangeData['1. From_Currency Code'],
+                'name' => $exchangeData['2. From_Currency Name']
+            ],
+            'to' => [
+                'code' => $exchangeData['3. To_Currency Code'],
+                'name' => $exchangeData['4. To_Currency Name']
+            ],
+            'rate' => (float) $exchangeData['5. Exchange Rate'],
+            'last_updated' => $exchangeData['6. Last Refreshed'],
+            'timezone' => $exchangeData['7. Time Zone'],
+            'bid_price' => (float) $exchangeData['8. Bid Price'],
+            'ask_price' => (float) $exchangeData['9. Ask Price']
+        ];
+    }
+
+    /**
+     * Altın verilerini işle
+     */
+    private function processGoldData(GoldApiService $service): array
+    {
+        Log::info("Altın verisi çekiliyor", [
+            'currency' => $this->params['currency'] ?? 'USD',
+            'date' => $this->params['date'] ?? 'current'
+        ]);
+
+        $currency = $this->params['currency'] ?? 'USD';
+        $date = $this->params['date'] ?? null;
+
+        $response = $date 
+            ? $service->getHistoricalPrice('XAU', $currency, $date)
+            : $service->getRealTimePrice('XAU', $currency);
+
+        if ($response['status'] === 'error') {
+            throw new \Exception($response['message']);
+        }
+
+        return $response['data'];
     }
 } 

@@ -3,10 +3,117 @@
 namespace App\Services;
 
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
 class DataCleanerService
 {
+    /**
+     * Finansal veriyi temizler ve doğrular
+     */
+    public function cleanFinancialData(array $data): array
+    {
+        try {
+            Log::info('Veri temizleme başladı', ['data' => $data]);
+
+            // Veri tipine göre temizleme
+            if (isset($data['troy_ounce'])) {
+                return $this->cleanGoldData($data);
+            } elseif (isset($data['from'], $data['to'], $data['rate'])) {
+                return $this->cleanForexData($data);
+            }
+
+            throw new \Exception('Bilinmeyen veri formatı: ' . json_encode($data));
+        } catch (\Exception $e) {
+            Log::error('Veri temizleme hatası', [
+                'error' => $e->getMessage(),
+                'data' => $data,
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Altın verisini temizler
+     */
+    private function cleanGoldData(array $data): array
+    {
+        // Sayısal değerleri kontrol et
+        $troyOuncePrice = $data['troy_ounce']['price'] ?? 0;
+        $gramPrice = $data['gram']['price'] ?? 0;
+
+        if (!is_numeric($troyOuncePrice) || !is_numeric($gramPrice)) {
+            throw new \Exception('Geçersiz fiyat değeri');
+        }
+
+        // Negatif değerleri kontrol et
+        if ($troyOuncePrice < 0 || $gramPrice < 0) {
+            throw new \Exception('Negatif fiyat değeri');
+        }
+
+        // Para birimlerini kontrol et
+        if (empty($data['to_currency'])) {
+            throw new \Exception('Para birimi belirtilmemiş');
+        }
+
+        return [
+            'troy_ounce' => [
+                'price' => (float) $troyOuncePrice,
+                'unit' => 'troy ounce'
+            ],
+            'gram' => [
+                'price' => (float) $gramPrice,
+                'unit' => 'gram'
+            ],
+            'from_currency' => $data['from_currency'] ?? 'GOLD',
+            'to_currency' => $data['to_currency'],
+            'last_updated' => $data['last_updated'] ?? now()->toIso8601String(),
+            'source' => $data['source'] ?? 'unknown'
+        ];
+    }
+
+    /**
+     * Döviz verisini temizler
+     */
+    private function cleanForexData(array $data): array
+    {
+        // Sayısal değerleri kontrol et
+        $rate = $data['rate'] ?? 0;
+        $bidPrice = $data['bid_price'] ?? $rate;
+        $askPrice = $data['ask_price'] ?? $rate;
+
+        if (!is_numeric($rate) || !is_numeric($bidPrice) || !is_numeric($askPrice)) {
+            throw new \Exception('Geçersiz kur değeri');
+        }
+
+        // Negatif değerleri kontrol et
+        if ($rate < 0 || $bidPrice < 0 || $askPrice < 0) {
+            throw new \Exception('Negatif kur değeri');
+        }
+
+        // Para birimlerini kontrol et
+        if (empty($data['from']['code']) || empty($data['to']['code'])) {
+            throw new \Exception('Para birimi belirtilmemiş');
+        }
+
+        return [
+            'from' => [
+                'code' => strtoupper($data['from']['code']),
+                'name' => $data['from']['name'] ?? null
+            ],
+            'to' => [
+                'code' => strtoupper($data['to']['code']),
+                'name' => $data['to']['name'] ?? null
+            ],
+            'rate' => (float) $rate,
+            'bid_price' => (float) $bidPrice,
+            'ask_price' => (float) $askPrice,
+            'last_updated' => $data['last_updated'] ?? now()->toIso8601String(),
+            'timezone' => $data['timezone'] ?? 'UTC'
+        ];
+    }
+
     /**
      * AlphaVantage API'den gelen döviz kuru verisini temizler
      */
@@ -82,22 +189,9 @@ class DataCleanerService
     /**
      * Tarih/saat değerinin geçerli olduğunu kontrol eder
      */
-    private function validateTimestamp(string $timestamp): void
-    {
-        try {
-            Carbon::parse($timestamp);
-        } catch (\Exception $e) {
-            throw new InvalidArgumentException("Geçersiz tarih formatı: {$timestamp}");
-        }
-    }
-
+   
     /**
      * Sayısal değerin geçerli olduğunu kontrol eder
      */
-    private function validateNumericValue(string $value, string $fieldName): void
-    {
-        if (!is_numeric($value)) {
-            throw new InvalidArgumentException("Geçersiz {$fieldName} değeri: {$value}");
-        }
-    }
+   
 } 
